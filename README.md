@@ -46,34 +46,43 @@ net.Receive('PS_SendPoints', function(length, ply)
 
 	ply.PS_LastGavePoints = ply.PS_LastGavePoints or 0
 	if ply.PS_LastGavePoints + 5 > CurTime() then
-		ply:PS_Notify("Slow down! You can't give away points that fast.")
+		ply:PS_Notify("Оу, оу, скорострел, помедленнее, я не успиваю.")
 		return
 	end
 
 	ply:PS_TakePoints(points)
-	ply:PS_Notify("You gave ", other:Nick(), " ", points, " of your ", PS.Config.PointsName, ".")
+	ply:PS_Notify("Ты перечислил ", other:Nick(), " ", points, "", PS.Config.PointsName, ".")
 		
 	other:PS_GivePoints(points)
-	other:PS_Notify(ply:Nick(), " gave you ", points, " of their ", PS.Config.PointsName, ".")
+	other:PS_Notify(ply:Nick(), " перечислил тебе ", points, "", PS.Config.PointsName, ".")
 
 	ply.PS_LastGavePoints = CurTime()
 end)
 
 -- admin points
 
+local function OMON( ply )
+	if not IsValid( ply ) then return end
+	ply:SendLua( "notification.AddLegacy('За тобой выехал ОМОН',NOTIFY_ERROR,5)" )
+	print( string.format( "%s попытался произвести действие на которое ему не хватает прав доступа", ply:Name() or "NoName" ) )
+end
+
 net.Receive('PS_GivePoints', function(length, ply)
 	local other = net.ReadEntity()
 	local points = net.ReadInt(32)
-	
+
 	if not PS.Config.AdminCanAccessAdminTab and not PS.Config.SuperAdminCanAccessAdminTab then return end
 	
-	local admin_allowed = PS.Config.AdminCanAccessAdminTab and ply:IsAdmin()
-	local super_admin_allowed = PS.Config.SuperAdminCanAccessAdminTab and ply:IsSuperAdmin()
-	
-	if (admin_allowed or super_admin_allowed) and other and points and IsValid(other) and other:IsPlayer() then
-		other:PS_GivePoints(points)
-		other:PS_Notify(ply:Nick(), ' gave you ', points, ' ', PS.Config.PointsName, '.')
-	end
+	CAMI.PlayerHasAccess( ply, "PS_GivePoints", function( bool, reason )
+
+		if bool and other and points and IsValid(other) and other:IsPlayer() then
+			other:PS_GivePoints(points)
+			other:PS_Notify(ply:Nick(), ' выдал тебе ', points, ' ', PS.Config.PointsName, '.')
+		end
+
+		if not bool then OMON( ply ) end
+
+	end )
 end)
 
 net.Receive('PS_TakePoints', function(length, ply)
@@ -82,13 +91,16 @@ net.Receive('PS_TakePoints', function(length, ply)
 	
 	if not PS.Config.AdminCanAccessAdminTab and not PS.Config.SuperAdminCanAccessAdminTab then return end
 	
-	local admin_allowed = PS.Config.AdminCanAccessAdminTab and ply:IsAdmin()
-	local super_admin_allowed = PS.Config.SuperAdminCanAccessAdminTab and ply:IsSuperAdmin()
-	
-	if (admin_allowed or super_admin_allowed) and other and points and IsValid(other) and other:IsPlayer() then
-		other:PS_TakePoints(points)
-		other:PS_Notify(ply:Nick(), ' took ', points, ' ', PS.Config.PointsName, ' from you.')
-	end
+	CAMI.PlayerHasAccess( ply, "PS_TakePoints", function( bool, reason )
+
+		if bool and other and points and IsValid(other) and other:IsPlayer() then
+			other:PS_TakePoints(points)
+			other:PS_Notify(ply:Nick(), ' забрал ', points, ' ', PS.Config.PointsName, ' у тебя')
+		end
+
+		if not bool then OMON( ply ) end
+
+	end )
 end)
 
 net.Receive('PS_SetPoints', function(length, ply)
@@ -97,13 +109,16 @@ net.Receive('PS_SetPoints', function(length, ply)
 	
 	if not PS.Config.AdminCanAccessAdminTab and not PS.Config.SuperAdminCanAccessAdminTab then return end
 	
-	local admin_allowed = PS.Config.AdminCanAccessAdminTab and ply:IsAdmin()
-	local super_admin_allowed = PS.Config.SuperAdminCanAccessAdminTab and ply:IsSuperAdmin()
-	
-	if (admin_allowed or super_admin_allowed) and other and points and IsValid(other) and other:IsPlayer() then
-		other:PS_SetPoints(points)
-		other:PS_Notify(ply:Nick(), ' set your ', PS.Config.PointsName, ' to ', points, '.')
-	end
+	CAMI.PlayerHasAccess( ply, "PS_SetPoints", function( bool, reason )
+
+		if bool and other and points and IsValid(other) and other:IsPlayer() then
+			other:PS_SetPoints(points)
+			other:PS_Notify(ply:Nick(), ' назначил ', PS.Config.PointsName, ' тебе ', points, '.')
+		end
+
+		if not bool then OMON( ply ) end
+
+	end )
 end)
 
 -- admin items
@@ -114,12 +129,15 @@ net.Receive('PS_GiveItem', function(length, ply)
 	
 	if not PS.Config.AdminCanAccessAdminTab and not PS.Config.SuperAdminCanAccessAdminTab then return end
 	
-	local admin_allowed = PS.Config.AdminCanAccessAdminTab and ply:IsAdmin()
-	local super_admin_allowed = PS.Config.SuperAdminCanAccessAdminTab and ply:IsSuperAdmin()
+	CAMI.PlayerHasAccess( ply, "PS_GiveItem", function( bool, reason )
 	
-	if (admin_allowed or super_admin_allowed) and other and item_id and PS.Items[item_id] and IsValid(other) and other:IsPlayer() and not other:PS_HasItem(item_id) then
-		other:PS_GiveItem(item_id)
-	end
+		if bool and other and item_id and PS.Items[item_id] and IsValid(other) and other:IsPlayer() and not other:PS_HasItem(item_id) then
+			other:PS_GiveItem(item_id)
+		end
+
+		if not bool then OMON( ply ) end
+
+	end )	
 end)
 
 net.Receive('PS_TakeItem', function(length, ply)
@@ -128,29 +146,35 @@ net.Receive('PS_TakeItem', function(length, ply)
 	
 	if not PS.Config.AdminCanAccessAdminTab and not PS.Config.SuperAdminCanAccessAdminTab then return end
 	
-	local admin_allowed = PS.Config.AdminCanAccessAdminTab and ply:IsAdmin()
-	local super_admin_allowed = PS.Config.SuperAdminCanAccessAdminTab and ply:IsSuperAdmin()
+	CAMI.PlayerHasAccess( ply, "PS_TakeItem", function( bool, reason )
+
+		if bool and other and item_id and PS.Items[item_id] and IsValid(other) and other:IsPlayer() and other:PS_HasItem(item_id) then
+			-- holster it first without notificaiton
+			other.PS_Items[item_id].Equipped = false
+		
+			local ITEM = PS.Items[item_id]
+			ITEM:OnHolster(other)
+			other:PS_TakeItem(item_id)
+		end
+
+		if not bool then OMON( ply ) end
+
+	end )
 	
-	if (admin_allowed or super_admin_allowed) and other and item_id and PS.Items[item_id] and IsValid(other) and other:IsPlayer() and other:PS_HasItem(item_id) then
-		-- holster it first without notificaiton
-		other.PS_Items[item_id].Equipped = false
-	
-		local ITEM = PS.Items[item_id]
-		ITEM:OnHolster(other)
-		other:PS_TakeItem(item_id)
-	end
 end)
 
 -- hooks
 
--- Ability to use any button to open pointshop.
-hook.Add("PlayerButtonDown", "PS_ToggleKey", function(ply, btn)
-	if PS.Config.ShopKey and PS.Config.ShopKey ~= "" then
-		local psButton = _G["KEY_" .. string.upper(PS.Config.ShopKey)]
-		if psButton and psButton == btn then
-			ply:PS_ToggleMenu()
-		end
-	end
+local KeyToHook = {
+	F1 = "ShowHelp",
+	F2 = "ShowTeam",
+	F3 = "ShowSpare1",
+	F4 = "ShowSpare2",
+	None = "ThisHookDoesNotExist"
+}
+
+hook.Add(KeyToHook[PS.Config.ShopKey], "PS_ShopKey", function(ply)
+	ply:PS_ToggleMenu()
 end)
 
 hook.Add('PlayerSpawn', 'PS_PlayerSpawn', function(ply) ply:PS_PlayerSpawn() end)
